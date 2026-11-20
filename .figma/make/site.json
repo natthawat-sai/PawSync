@@ -1,0 +1,10 @@
+{
+  "description": "Effortlessly manage and monitor your pet's feeding schedule with a sleek, intuitive interface designed for pet owners seeking convenience and control.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
