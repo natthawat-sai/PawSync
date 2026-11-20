@@ -350,7 +350,7 @@ body {
 .login-screen { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 55px; }
 .brand-mark { width: 83px; height: 83px; display: grid; place-items: center; color: white; border-radius: 28px; background: linear-gradient(145deg, rgba(103,175,255,.92), rgba(49,111,227,.95)); box-shadow: 0 20px 40px rgba(55,119,225,.27), inset 0 1px 1px rgba(255,255,255,.5); transform: rotate(-3deg); }
 .brand-mark .icon { width: 42px; height: 42px; }
-.brand-mark img { width: 72px; height: 72px; object-fit: contain; border-radius: 22px; filter: brightness(0) invert(1); }
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
 .login-copy { text-align: center; margin: 25px 0 30px; }
 .login-title { font-size: 30px; font-weight: 730; letter-spacing: -1.25px; }
 .subtitle { color: var(--muted); font-size: 14px; margin-top: 8px; }
@@ -367,7 +367,7 @@ body {
 .splash-screen { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 35px; }
 .splash-orb { width: 154px; height: 154px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, rgba(164,207,255,.5), rgba(207,229,255,.18) 58%, transparent 72%); animation: splash-breathe 2s ease-in-out infinite; }
 .brand-mark.splash-mark { width: 90px; height: 90px; margin: 0; transform: none; border-radius: 30px; }
-.brand-mark.splash-mark img { width: 82px; height: 82px; border-radius: 25px; }
+.brand-mark.splash-mark img { width: 100%; height: 100%; border-radius: inherit; }
 .splash-name { margin-top: 14px; font-size: 36px; font-weight: 740; letter-spacing: -1.8px; }
 .splash-tagline { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .splash-loader { position: absolute; bottom: 48px; width: 52px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(61,130,246,.12); }
