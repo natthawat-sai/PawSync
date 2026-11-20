@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
-import pawSyncLogo from "./assets/pawsync-logo.png";
+import pawSyncLogo from "../resources/pawsync_white.png";
 
 type Screen =
   | "splash"
@@ -70,9 +70,6 @@ function Icon({ name, size = "medium" }: { name: IconName; size?: "small" | "med
 
 function BrandMark({ splash = false }: { splash?: boolean }) {
   return <div className={`brand-mark ${splash ? "splash-mark" : ""}`}>
-    <svg className="logo-filter-defs" aria-hidden="true" focusable="false">
-      <defs><filter id="paw-logo-white" colorInterpolationFilters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 -2 0 0 0 1.6" /></filter></defs>
-    </svg>
     <img src={pawSyncLogo} alt="PawSync" />
   </div>;
 }

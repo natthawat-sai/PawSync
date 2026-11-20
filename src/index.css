@@ -350,8 +350,7 @@ body {
 .login-screen { min-height: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 55px; }
 .brand-mark { width: 83px; height: 83px; display: grid; place-items: center; color: white; border-radius: 28px; background: linear-gradient(145deg, rgba(103,175,255,.92), rgba(49,111,227,.95)); box-shadow: 0 20px 40px rgba(55,119,225,.27), inset 0 1px 1px rgba(255,255,255,.5); transform: rotate(-3deg); }
 .brand-mark .icon { width: 42px; height: 42px; }
-.brand-mark img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; filter: url(#paw-logo-white); }
-.logo-filter-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.brand-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block; padding: 5px; }
 .login-copy { text-align: center; margin: 25px 0 30px; }
 .login-title { font-size: 30px; font-weight: 730; letter-spacing: -1.25px; }
 .subtitle { color: var(--muted); font-size: 14px; margin-top: 8px; }
