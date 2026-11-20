@@ -68,6 +68,15 @@ function Icon({ name, size = "medium" }: { name: IconName; size?: "small" | "med
   return <svg className={`icon icon-${size}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>;
 }
 
+function BrandMark({ splash = false }: { splash?: boolean }) {
+  return <div className={`brand-mark ${splash ? "splash-mark" : ""}`}>
+    <svg className="logo-filter-defs" aria-hidden="true" focusable="false">
+      <defs><filter id="paw-logo-white" colorInterpolationFilters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 -2 0 0 0 1.6" /></filter></defs>
+    </svg>
+    <img src={pawSyncLogo} alt="PawSync" />
+  </div>;
+}
+
 function Tap({
   children,
   className = "",
@@ -112,15 +121,15 @@ function ScreenShell({ children, screen, setScreen, noNav = false }: { children:
 }
 
 function Login({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
-  return <ScreenShell screen="login" setScreen={() => {}} noNav><div className="login-screen"><div className="brand-mark"><img src={pawSyncLogo} alt="PawSync logo" /></div><div className="login-copy"><div className="login-title">Welcome Back</div><div className="subtitle">Sign in to care for Milo from anywhere.</div></div><div className="login-card glass"><div className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Email address">alex@pawsync.com</div></div></div><div className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Password">••••••••••</div></div></div><Tap className="forgot-link">Forgot Password?</Tap><Tap className="primary-button" onTap={onLogin}>Sign In</Tap><div className="signup-copy">New to PawSync? <Tap className="inline-link" onTap={onSignup}>Create Account</Tap></div></div><div className="login-footer">Private, secure, and made for better care.</div></div></ScreenShell>;
+  return <ScreenShell screen="login" setScreen={() => {}} noNav><div className="login-screen"><BrandMark /><div className="login-copy"><div className="login-title">Welcome Back</div><div className="subtitle">Sign in to care for Milo from anywhere.</div></div><div className="login-card glass"><div className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Email address">alex@pawsync.com</div></div></div><div className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Password">••••••••••</div></div></div><Tap className="forgot-link">Forgot Password?</Tap><Tap className="primary-button" onTap={onLogin}>Sign In</Tap><div className="signup-copy">New to PawSync? <Tap className="inline-link" onTap={onSignup}>Create Account</Tap></div></div><div className="login-footer">Private, secure, and made for better care.</div></div></ScreenShell>;
 }
 
 function Signup({ onBack, onCreate }: { onBack: () => void; onCreate: () => void }) {
-  return <ScreenShell screen="signup" setScreen={() => {}} noNav><div className="login-screen signup-screen"><div className="brand-mark"><img src={pawSyncLogo} alt="PawSync logo" /></div><div className="login-copy"><div className="login-title">Create Account</div><div className="subtitle">Start caring for your pet in sync.</div></div><div className="login-card glass"><div className="field"><Icon name="user" /><div className="field-copy"><span>Full name</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Full name">Alex Morgan</div></div></div><div className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Email address">alex@pawsync.com</div></div></div><div className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Password">••••••••••</div></div></div><Tap className="primary-button" onTap={onCreate}>Create Account</Tap><div className="signup-copy">Already have an account? <Tap className="inline-link" onTap={onBack}>Sign In</Tap></div></div><div className="login-footer">Private, secure, and made for better care.</div></div></ScreenShell>;
+  return <ScreenShell screen="signup" setScreen={() => {}} noNav><div className="login-screen signup-screen"><BrandMark /><div className="login-copy"><div className="login-title">Create Account</div><div className="subtitle">Start caring for your pet in sync.</div></div><div className="login-card glass"><div className="field"><Icon name="user" /><div className="field-copy"><span>Full name</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Full name">Alex Morgan</div></div></div><div className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Email address">alex@pawsync.com</div></div></div><div className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Password">••••••••••</div></div></div><Tap className="primary-button" onTap={onCreate}>Create Account</Tap><div className="signup-copy">Already have an account? <Tap className="inline-link" onTap={onBack}>Sign In</Tap></div></div><div className="login-footer">Private, secure, and made for better care.</div></div></ScreenShell>;
 }
 
 function Splash() {
-  return <ScreenShell screen="splash" setScreen={() => {}} noNav><div className="splash-screen"><div className="splash-orb"><div className="brand-mark splash-mark"><img src={pawSyncLogo} alt="PawSync logo" /></div></div><div className="splash-name">PawSync</div><div className="splash-tagline">Care, perfectly in sync.</div><div className="splash-loader"><i /></div></div></ScreenShell>;
+  return <ScreenShell screen="splash" setScreen={() => {}} noNav><div className="splash-screen"><div className="splash-orb"><BrandMark splash /></div><div className="splash-name">PawSync</div><div className="splash-tagline">Care, perfectly in sync.</div><div className="splash-loader"><i /></div></div></ScreenShell>;
 }
 
 function Dashboard({ setScreen }: { setScreen: (screen: Screen) => void }) {
