@@ -46,34 +46,88 @@ async function tb(session: Session, path: string, init?: RequestInit) {
   if (!response.ok) throw Object.assign(new Error(data.message || `ThingsBoard returned HTTP ${response.status}.`), { status: response.status });
   return data;
 }
+
+// Normalise a device name so trailing spaces / letter case never block a match.
+function norm(value: unknown) { return String(value ?? "").trim().toLowerCase(); }
+
+// Pull a list of devices out of whatever shape ThingsBoard returned
+// (page object, plain array, or a single device object).
+function extractDevices(payload: any): any[] {
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  if (payload?.id?.id && payload?.name) return [payload];
+  return [];
+}
+
 async function login(body: any) {
   const username = String(body.username ?? "").trim();
   const password = String(body.password ?? "");
   const deviceName = String(body.deviceName ?? "").trim();
   if (!username || !password || !deviceName) return json(400, { message: "Email, password, and device name are required." });
+
+  // 1) Sign in
   const authResponse = await fetch(`${THINGSBOARD}/api/auth/login`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }),
   });
   const auth: any = await authResponse.json().catch(() => ({}));
   if (!authResponse.ok || !auth.token) return json(401, { message: "ThingsBoard sign in failed. Check the account." });
-  // Resolve the signed-in user's scope first. Customer users must query their
-  // own customer's devices; tenant endpoints do not return customer-owned ones.
   const authHeaders = { "X-Authorization": `Bearer ${auth.token}` };
+
+  // 2) Who is this user? (TENANT_ADMIN or CUSTOMER_USER)
   const userResponse = await fetch(`${THINGSBOARD}/api/auth/user`, { headers: authHeaders });
   const user: any = await userResponse.json().catch(() => ({}));
-  const customerId = user?.authority === "CUSTOMER_USER"
-    ? user?.customerId?.id ?? (typeof user?.customerId === "string" ? user.customerId : "")
-    : "";
-  const lookupUrl = customerId
-    ? `${THINGSBOARD}/api/customer/${encodeURIComponent(customerId)}/devices?pageSize=100&page=0&textSearch=${encodeURIComponent(deviceName)}`
-    : `${THINGSBOARD}/api/tenant/devices?deviceName=${encodeURIComponent(deviceName)}`;
-  const lookup = await fetch(lookupUrl, { headers: authHeaders });
-  const devicePage: any = await lookup.json().catch(() => ({}));
-  const devices = Array.isArray(devicePage?.data) ? devicePage.data : Array.isArray(devicePage) ? devicePage : [];
-  const device = devices.find((entry: any) => entry.name === deviceName);
-  if (!lookup.ok || !device?.id?.id) return json(404, { message: "Device not found in the signed-in user's ThingsBoard access. Assign it to that user's Customer and check the device name." });
-  const session: Session = { token: auth.token, deviceId: device.id.id, deviceName, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
-  return json(200, { ok: true, deviceName }, { "Set-Cookie": setCookie(session) });
+  if (!userResponse.ok) {
+    return json(502, { message: `Cannot read the user profile from ThingsBoard (HTTP ${userResponse.status}).` });
+  }
+  const authority = String(user?.authority ?? "UNKNOWN");
+  const customerId: string =
+    user?.customerId?.id ?? (typeof user?.customerId === "string" ? user.customerId : "");
+
+  // 3) Try every lookup that makes sense for this user until the device shows up.
+  //    /api/user/devices works for both tenant and customer users;
+  //    the customer/tenant endpoints are fallbacks.
+  const q = `pageSize=100&page=0&textSearch=${encodeURIComponent(deviceName)}`;
+  const candidates: string[] = [`/api/user/devices?${q}`];
+  if (authority === "CUSTOMER_USER" && customerId) {
+    candidates.push(`/api/customer/${encodeURIComponent(customerId)}/devices?${q}`);
+  } else {
+    candidates.push(`/api/tenant/devices?${q}`);
+  }
+
+  let device: any = null;
+  const seen = new Set<string>();
+  const problems: string[] = [];
+  for (const path of candidates) {
+    const response = await fetch(`${THINGSBOARD}${path}`, { headers: authHeaders });
+    const payload: any = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      problems.push(`${path.split("?")[0]} -> HTTP ${response.status}${payload?.message ? ` (${payload.message})` : ""}`);
+      continue;
+    }
+    const devices = extractDevices(payload);
+    devices.forEach((d: any) => d?.name && seen.add(String(d.name)));
+    device =
+      devices.find((d: any) => d.name === deviceName) ??
+      devices.find((d: any) => norm(d.name) === norm(deviceName));
+    if (device?.id?.id) break;
+  }
+
+  if (!device?.id?.id) {
+    // Detailed on purpose while debugging. Once everything works you can
+    // replace this with the short generic message.
+    const visible = [...seen];
+    return json(404, {
+      message:
+        `Device "${deviceName}" not found for ${authority}` +
+        `${customerId ? ` (customer ${customerId})` : " (no customer)"}. ` +
+        `Visible devices: ${visible.length ? visible.join(", ") : "none"}.` +
+        `${problems.length ? ` Errors: ${problems.join("; ")}.` : ""}` +
+        ` Assign the device to this user's Customer and check the device name.`,
+    });
+  }
+
+  const session: Session = { token: auth.token, deviceId: device.id.id, deviceName: device.name ?? deviceName, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
+  return json(200, { ok: true, deviceName: session.deviceName }, { "Set-Cookie": setCookie(session) });
 }
 function latest(data: Record<string, any[]>, key: string) { return data[key]?.[0] ?? null; }
 function tsPath(session: Session, keys: string, suffix = "") {
