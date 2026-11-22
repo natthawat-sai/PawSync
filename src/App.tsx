@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import pawSyncLogo from "../resources/pawsync_white.png";
+import { connectThingsBoard, deviceApi, disconnectThingsBoard, restoreThingsBoardSession, type DeviceSchedule, type DeviceStatus } from "./deviceApi";
 
 type Screen =
   | "splash"
@@ -117,8 +118,26 @@ function ScreenShell({ children, screen, setScreen, noNav = false }: { children:
   return <div className="phone"><div className="ambient ambient-one" /><div className="ambient ambient-two" /><StatusBar /><main className={`screen-content ${noNav ? "no-nav" : ""}`}>{children}</main>{!noNav && <><BottomNav active={screen} setScreen={setScreen} /><div className="home-indicator" aria-hidden="true" /></>}</div>;
 }
 
-function Login({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
-  return <ScreenShell screen="login" setScreen={() => {}} noNav><div className="login-screen"><BrandMark /><div className="login-copy"><div className="login-title">Welcome Back</div><div className="subtitle">Sign in to care for Milo from anywhere.</div></div><div className="login-card glass"><div className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Email address">alex@pawsync.com</div></div></div><div className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Password">••••••••••</div></div></div><Tap className="forgot-link">Forgot Password?</Tap><Tap className="primary-button" onTap={onLogin}>Sign In</Tap><div className="signup-copy">New to PawSync? <Tap className="inline-link" onTap={onSignup}>Create Account</Tap></div></div><div className="login-footer">Private, secure, and made for better care.</div></div></ScreenShell>;
+function ThingsBoardLogin({ onLogin }: { onLogin: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [deviceName, setDeviceName] = useState(localStorage.getItem("pawsync-device-name") || "PawSync Feeder");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await connectThingsBoard(username, password, deviceName);
+      localStorage.setItem("pawsync-device-name", deviceName.trim());
+      setPassword("");
+      onLogin();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not connect to ThingsBoard.");
+    } finally { setBusy(false); }
+  };
+  return <ScreenShell screen="login" setScreen={() => {}} noNav><div className="login-screen"><BrandMark /><div className="login-copy"><div className="login-title">Welcome Back</div><div className="subtitle">Sign in to connect your PawSync feeder.</div></div><form className="login-card glass" onSubmit={(event) => void submit(event)}><label className="field"><Icon name="mail" /><div className="field-copy"><span>ThingsBoard email</span><input type="email" autoComplete="username" required value={username} onChange={(event) => setUsername(event.target.value)} /></div></label><label className="field"><Icon name="lock" /><div className="field-copy"><span>ThingsBoard password</span><input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></div></label><label className="field"><Icon name="bowl" /><div className="field-copy"><span>Device name</span><input required value={deviceName} onChange={(event) => setDeviceName(event.target.value)} /></div></label><div className="muted">Connects securely to ThingsBoard Cloud. Your password is sent through the PawSync server and is not saved.</div>{error && <div className="muted" role="alert">{error}</div>}<button className="primary-button" type="submit" disabled={busy}>{busy ? "Connecting…" : "Sign In"}</button></form><div className="login-footer">Secure connection · ThingsBoard Cloud</div></div></ScreenShell>;
 }
 
 function Signup({ onBack, onCreate }: { onBack: () => void; onCreate: () => void }) {
@@ -131,36 +150,55 @@ function Splash() {
 
 function Dashboard({ setScreen }: { setScreen: (screen: Screen) => void }) {
   const [fed, setFed] = useState(false);
-  return <><Header eyebrow="GOOD MORNING" title="Alex" onBell={() => setScreen("notifications")} /><div className="pet-card glass"><img src={petPhoto} alt="Milo the golden retriever" /><div className="pet-info"><div className="pet-name">Milo</div><div className="pet-meta">Golden Retriever · 3 years</div></div><div className="online-pill"><span />Online</div></div><div className="hero-card glass"><div className="hero-top"><div><div className="label">FOOD REMAINING</div><div className="hero-value">78<span>%</span></div><div className="muted">Enough for about 6 days</div></div><div className="progress-ring"><svg viewBox="0 0 112 112"><circle className="ring-track" cx="56" cy="56" r="48" /><circle className="ring-value" cx="56" cy="56" r="48" /></svg><Icon name="bowl" size="large" /></div></div><div className="hero-divider" /><div className="feeding-row"><div><div className="label">NEXT FEEDING</div><div className="feeding-time">18:00 <span>in 4h 18m</span></div></div><div className="amount-pill">80g</div></div></div><Tap className={`feed-button ${fed ? "fed" : ""}`} onTap={() => { setFed(true); window.setTimeout(() => setFed(false), 2500); }}><span className="feed-icon"><Icon name={fed ? "check" : "bowl"} size="large" /></span><span><strong>{fed ? "Feeding complete" : "Feed Now"}</strong><small>{fed ? "80g served to Milo" : "Tap to dispense 80g"}</small></span></Tap><div className="section-heading"><span>At a glance</span><span>Everything looks good</span></div><div className="system-grid friendly-grid"><div className="device-status-card glass"><div className="system-icon"><Icon name="bowl" /></div><div><div className="system-label">Device Status</div><div className="friendly-status"><i />Online</div><div className="system-detail">PawSync Feeder is ready</div></div></div><Tap className="system-card glass" onTap={() => setScreen("schedule")}><div className="system-icon purple"><Icon name="calendar" /></div><div className="system-label">Schedule</div><div className="system-value">3 meals today</div><div className="system-detail">Next at 18:00</div></Tap></div><div className="analytics-card glass"><div className="card-head"><div><div className="card-title">Weekly feeding</div><div className="muted">Daily average · 236g</div></div><div className="trend">+4.2%</div></div><div className="bar-chart">{[58,72,65,88,76,62,84].map((height, index) => <div className="bar-column" key={index}><div className={`bar bar-${index}`}><i /></div><span>{["M","T","W","T","F","S","S"][index]}</span></div>)}</div></div><div className="last-feed glass"><span className="mini-icon"><Icon name="history" /></span><div><div className="card-title">Last feeding</div><div className="muted">Today, 12:00 · Automatic</div></div><strong>80g</strong></div></>;
+  const [status, setStatus] = useState<DeviceStatus | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = async () => {
+    try { setStatus(await deviceApi.getStatus()); setError(""); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to reach feeder"); }
+  };
+  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 5000); return () => window.clearInterval(timer); }, []);
+  const doFeed = async () => {
+    setBusy(true);
+    try { await deviceApi.feed(80); setFed(true); await refresh(); window.setTimeout(() => setFed(false), 2500); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Feeding failed"); }
+    finally { setBusy(false); }
+  };
+  const doStop = async () => {
+    setBusy(true);
+    try { await deviceApi.stop(); await refresh(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not stop feeding"); }
+    finally { setBusy(false); }
+  };
+  const percent = status?.foodLevelPercent ?? 0;
+  const last = status?.lastFeeding;
+  return <><Header eyebrow="GOOD MORNING" title="Alex" onBell={() => setScreen("notifications")} /><div className="pet-card glass"><img src={petPhoto} alt="Milo the golden retriever" /><div className="pet-info"><div className="pet-name">Milo</div><div className="pet-meta">Golden Retriever · 3 years</div></div><div className="online-pill"><span style={{ backgroundColor: status?.online ? undefined : "#f87171" }} />{status?.online ? "Online" : status ? "Offline" : "Checking"}</div></div>{status?.simulation && <div className="muted">Demo device · values are simulated</div>}{error && <div className="muted" role="status">{error}</div>}<div className="hero-card glass"><div className="hero-top"><div><div className="label">FOOD REMAINING</div><div className="hero-value">{Math.round(percent)}<span>%</span></div><div className="muted">{status ? `${status.foodRemainingGrams}g remaining` : "Waiting for feeder"}</div></div><div className="progress-ring"><svg viewBox="0 0 112 112"><circle className="ring-track" cx="56" cy="56" r="48" /><circle className="ring-value" cx="56" cy="56" r="48" style={{ strokeDashoffset: `${301 - 301 * percent / 100}px` }} /></svg><Icon name="bowl" size="large" /></div></div><div className="hero-divider" /><div className="feeding-row"><div><div className="label">NEXT FEEDING</div><div className="feeding-time">18:00 <span>scheduled</span></div></div><div className="amount-pill">80g</div></div></div><Tap className={`feed-button ${fed ? "fed" : ""}`} onTap={() => void doFeed()}><span className="feed-icon"><Icon name={fed ? "check" : "bowl"} size="large" /></span><span><strong>{fed ? "Feeding complete" : busy ? "Sending command…" : "Feed Now"}</strong><small>{fed ? "80g recorded" : "Request 80g from feeder"}</small></span></Tap>{status?.mode === "feeding" && <Tap className="secondary-button full-button" onTap={() => void doStop()}>Stop feeding</Tap>}<div className="section-heading"><span>At a glance</span><span>{status?.mode ?? "Connecting"}</span></div><div className="system-grid friendly-grid"><div className="device-status-card glass"><div className="system-icon"><Icon name="bowl" /></div><div><div className="system-label">Device Status</div><div className="friendly-status"><i />{status?.online ? "Online" : "Offline"}</div><div className="system-detail">{status?.deviceName ?? "PawSync Feeder"}</div></div></div><Tap className="system-card glass" onTap={() => setScreen("schedule")}><div className="system-icon purple"><Icon name="calendar" /></div><div className="system-label">Schedule</div><div className="system-value">{status?.schedulesEnabled ?? "—"} meals</div><div className="system-detail">Open schedule</div></Tap></div><div className="analytics-card glass"><div className="card-head"><div><div className="card-title">Weekly feeding</div><div className="muted">Connect history feed for analytics</div></div></div><div className="bar-chart">{[58,72,65,88,76,62,84].map((height, index) => <div className="bar-column" key={index}><div className={`bar bar-${index}`}><i /></div><span>{["M","T","W","T","F","S","S"][index]}</span></div>)}</div></div><div className="last-feed glass"><span className="mini-icon"><Icon name="history" /></span><div><div className="card-title">Last feeding</div><div className="muted">{last ? `${new Date(last.timestamp * 1000).toLocaleString()} · ${last.source}` : "No feeding recorded"}</div></div><strong>{last ? `${last.grams}g` : "—"}</strong></div></>;
 }
 
 function Schedule() {
   const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const [schedules, setSchedules] = useState([
-    { id: 1, title: "Breakfast", time: "07:30", amount: 80, days: [...dayOptions], enabled: true },
-    { id: 2, title: "Lunch", time: "12:00", amount: 70, days: [...dayOptions], enabled: true },
-    { id: 3, title: "Dinner", time: "18:00", amount: 80, days: [...dayOptions], enabled: true },
-  ]);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [schedules, setSchedules] = useState<DeviceSchedule[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => { void deviceApi.getSchedules().then(setSchedules).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load schedule")); }, []);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newAmount, setNewAmount] = useState(60);
   const [newTime, setNewTime] = useState("20:30");
   const [newDays, setNewDays] = useState<string[]>([...dayOptions]);
-  const total = schedules.filter((item) => item.enabled).reduce((sum, item) => sum + item.amount, 0);
-  const updateSchedule = (id: number, changes: Partial<(typeof schedules)[number]>) => {
-    setSchedules((items) => items.map((item) => item.id === id ? { ...item, ...changes } : item));
-  };
+  const total = schedules.filter((item) => item.enabled).reduce((sum, item) => sum + item.grams, 0);
   const addSchedule = () => {
     setAddModalOpen(true);
   };
   const confirmAddSchedule = () => {
-    const id = Date.now();
-    setSchedules((items) => [...items, { id, title: "New meal", time: newTime, amount: newAmount, days: newDays, enabled: true }]);
+    const id = crypto.randomUUID();
+    const next = [...schedules, { id, name: "New meal", time: newTime, grams: newAmount, days: newDays, enabled: true }];
+    setSchedules(next);
+    void deviceApi.replaceSchedules(next).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not save schedule"));
     setEditingId(id);
     setAddModalOpen(false);
   };
   const toggleDay = (id: number, day: string) => {
-    const schedule = schedules.find((item) => item.id === id);
+    const schedule = schedules.find((item) => item.id === String(id));
     if (!schedule) return;
     const days = schedule.days.includes(day) ? schedule.days.filter((item) => item !== day) : dayOptions.filter((item) => [...schedule.days, day].includes(item));
     updateSchedule(id, { days });
@@ -181,7 +219,7 @@ function Schedule() {
     const minutes = Math.min(59, Number(digits.slice(2)) || 0).toString().padStart(2, "0");
     return `${hours}:${minutes}`;
   };
-  return <><Header eyebrow="AUTOMATION" title="Feeding schedule" /><div className="schedule-summary glass"><div className="summary-icon"><Icon name="calendar" size="large" /></div><div><div className="card-title">{schedules.length} meals scheduled</div><div className="muted">{total}g total per day</div></div><Tap className="round-add" onTap={addSchedule} label="Add schedule"><Icon name="plus" /></Tap></div><div className="schedule-list">{schedules.map((item) => { const isEditing = editingId === item.id; const dayLabel = getDayLabel(item.days); return <div className={`schedule-item glass ${isEditing ? "editing" : ""}`} key={item.id}><div className="schedule-card"><div className="schedule-time"><strong>{item.time}</strong><span>{Number(item.time.slice(0, 2)) < 12 ? "AM" : "PM"}</span></div><div className="schedule-copy"><div className="card-title">{item.title}</div><div className="muted">{item.amount}g · {dayLabel}</div><Tap className={`manage-button ${isEditing ? "active" : ""}`} onTap={() => setEditingId(isEditing ? null : item.id)} label={`${isEditing ? "Close" : "Open"} ${item.title} editor`}><Icon name="sliders" size="small" /></Tap></div><Tap className={`toggle ${item.enabled ? "on" : ""}`} onTap={() => updateSchedule(item.id, { enabled: !item.enabled })} label={`${item.enabled ? "Disable" : "Enable"} ${item.title}`}><i /></Tap></div>{isEditing && <div className="schedule-editor"><div className="editor-label">Feeding time</div><input className="time-input" type="text" inputMode="numeric" placeholder="20:30" value={item.time} onChange={(event) => updateSchedule(item.id, { time: formatTimeInput(event.target.value) })} /><div className="editor-label">Portion size</div><div className="amount-stepper"><Tap className="stepper-button" onTap={() => updateSchedule(item.id, { amount: Math.max(10, item.amount - 10) })} label="Reduce portion"><Icon name="minus" /></Tap><div><strong>{item.amount}</strong><span>grams</span></div><Tap className="stepper-button" onTap={() => updateSchedule(item.id, { amount: Math.min(250, item.amount + 10) })} label="Increase portion"><Icon name="plus" /></Tap></div><div className="editor-label">Feeding days</div><div className="schedule-days">{dayOptions.map((day) => <Tap key={day} className={`schedule-day ${item.days.includes(day) ? "selected" : ""}`} onTap={() => toggleDay(item.id, day)} label={`${item.days.includes(day) ? "Remove" : "Add"} ${day}`}><span>{day.slice(0, 1)}</span><small>{day}</small></Tap>)}</div><Tap className="save-button schedule-save" onTap={() => setEditingId(null)}><Icon name="check" />Save</Tap><Tap className="delete-schedule" onTap={() => { setSchedules((items) => items.filter((schedule) => schedule.id !== item.id)); setEditingId(null); }}><Icon name="trash" />Delete schedule</Tap></div>}</div>; })}</div>{schedules.length === 0 && <div className="schedule-empty glass"><span className="mini-icon"><Icon name="calendar" /></span><div className="card-title">No feeding schedules</div><div className="muted">Add a meal to keep Milo’s routine on track.</div><Tap className="primary-button compact-button" onTap={addSchedule}><Icon name="plus" />Add schedule</Tap></div>}{addModalOpen && <div className="modal-backdrop"><div className="add-modal glass"><div className="modal-heading"><div><div className="eyebrow">NEW MEAL</div><div className="modal-title">Add feeding schedule</div></div><Tap className="modal-close" onTap={() => setAddModalOpen(false)} label="Close"><Icon name="plus" /></Tap></div><div className="editor-label">Feeding time</div><input className="time-input" type="text" inputMode="numeric" placeholder="20:30" value={newTime} onChange={(event) => setNewTime(formatTimeInput(event.target.value))} /><div className="editor-label">Portion size</div><div className="amount-stepper modal-amount"><Tap className="stepper-button" onTap={() => setNewAmount(Math.max(10, newAmount - 10))} label="Reduce amount"><Icon name="minus" /></Tap><div><strong>{newAmount}</strong><span>grams</span></div><Tap className="stepper-button" onTap={() => setNewAmount(Math.min(250, newAmount + 10))} label="Increase amount"><Icon name="plus" /></Tap></div><div className="editor-label">Feeding days</div><div className="schedule-days modal-days">{dayOptions.map((day) => <Tap key={day} className={`schedule-day ${newDays.includes(day) ? "selected" : ""}`} onTap={() => setNewDays(newDays.includes(day) ? newDays.filter((item) => item !== day) : [...newDays, day])} label={`${newDays.includes(day) ? "Remove" : "Add"} ${day}`}><span>{day.slice(0, 1)}</span><small>{day}</small></Tap>)}</div><div className="modal-actions"><Tap className="secondary-button" onTap={() => setAddModalOpen(false)}>Cancel</Tap><Tap className="save-button" onTap={confirmAddSchedule}><Icon name="check" />Save</Tap></div></div></div>}</>;
+  return <><Header eyebrow="AUTOMATION" title="Feeding schedule" />{error && <div role="status" className="muted">{error}</div>}<div className="schedule-summary glass"><div className="summary-icon"><Icon name="calendar" size="large" /></div><div><div className="card-title">{schedules.length} meals scheduled</div><div className="muted">{total}g total per day</div></div><Tap className="round-add" onTap={addSchedule} label="Add schedule"><Icon name="plus" /></Tap></div><div className="schedule-list">{schedules.map((item) => { const isEditing = editingId === item.id; const dayLabel = getDayLabel(item.days); const save = () => { void deviceApi.replaceSchedules(schedules).then(() => setError("")).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not save schedule")); setEditingId(null); }; const remove = () => { const next = schedules.filter((schedule) => schedule.id !== item.id); setSchedules(next); void deviceApi.replaceSchedules(next).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not delete schedule")); setEditingId(null); }; return <div className={`schedule-item glass ${isEditing ? "editing" : ""}`} key={item.id}><div className="schedule-card"><div className="schedule-time"><strong>{item.time}</strong><span>{Number(item.time.slice(0, 2)) < 12 ? "AM" : "PM"}</span></div><div className="schedule-copy"><div className="card-title">{item.name}</div><div className="muted">{item.grams}g · {dayLabel}</div><Tap className={`manage-button ${isEditing ? "active" : ""}`} onTap={() => setEditingId(isEditing ? null : item.id as unknown as number)} label={`${isEditing ? "Close" : "Open"} ${item.name} editor`}><Icon name="sliders" size="small" /></Tap></div><Tap className={`toggle ${item.enabled ? "on" : ""}`} onTap={() => { const next = schedules.map((schedule) => schedule.id === item.id ? { ...schedule, enabled: !schedule.enabled } : schedule); setSchedules(next); void deviceApi.replaceSchedules(next).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not update schedule")); }} label={`${item.enabled ? "Disable" : "Enable"} ${item.name}`}><i /></Tap></div>{isEditing && <div className="schedule-editor"><div className="editor-label">Feeding time</div><input className="time-input" type="text" inputMode="numeric" placeholder="20:30" value={item.time} onChange={(event) => setSchedules((items) => items.map((entry) => entry.id === item.id ? { ...entry, time: formatTimeInput(event.target.value) } : entry))} /><div className="editor-label">Portion size</div><div className="amount-stepper"><Tap className="stepper-button" onTap={() => setSchedules((items) => items.map((entry) => entry.id === item.id ? { ...entry, grams: Math.max(10, entry.grams - 10) } : entry))} label="Reduce portion"><Icon name="minus" /></Tap><div><strong>{item.grams}</strong><span>grams</span></div><Tap className="stepper-button" onTap={() => setSchedules((items) => items.map((entry) => entry.id === item.id ? { ...entry, grams: Math.min(250, entry.grams + 10) } : entry))} label="Increase portion"><Icon name="plus" /></Tap></div><div className="editor-label">Feeding days</div><div className="schedule-days">{dayOptions.map((day) => <Tap key={day} className={`schedule-day ${item.days.includes(day) ? "selected" : ""}`} onTap={() => setSchedules((items) => items.map((entry) => entry.id === item.id ? { ...entry, days: entry.days.includes(day) ? entry.days.filter((value) => value !== day) : dayOptions.filter((value) => [...entry.days, day].includes(value)) } : entry))} label={`${item.days.includes(day) ? "Remove" : "Add"} ${day}`}><span>{day.slice(0, 1)}</span><small>{day}</small></Tap>)}</div><Tap className="save-button schedule-save" onTap={save}><Icon name="check" />Save</Tap><Tap className="delete-schedule" onTap={remove}><Icon name="trash" />Delete schedule</Tap></div>}</div>; })}</div>{schedules.length === 0 && <div className="schedule-empty glass"><span className="mini-icon"><Icon name="calendar" /></span><div className="card-title">No feeding schedules</div><div className="muted">Add a meal to keep Milo’s routine on track.</div><Tap className="primary-button compact-button" onTap={addSchedule}><Icon name="plus" />Add schedule</Tap></div>}{addModalOpen && <div className="modal-backdrop"><div className="add-modal glass"><div className="modal-heading"><div><div className="eyebrow">NEW MEAL</div><div className="modal-title">Add feeding schedule</div></div><Tap className="modal-close" onTap={() => setAddModalOpen(false)} label="Close"><Icon name="plus" /></Tap></div><div className="editor-label">Feeding time</div><input className="time-input" type="text" inputMode="numeric" placeholder="20:30" value={newTime} onChange={(event) => setNewTime(formatTimeInput(event.target.value))} /><div className="editor-label">Portion size</div><div className="amount-stepper modal-amount"><Tap className="stepper-button" onTap={() => setNewAmount(Math.max(10, newAmount - 10))} label="Reduce amount"><Icon name="minus" /></Tap><div><strong>{newAmount}</strong><span>grams</span></div><Tap className="stepper-button" onTap={() => setNewAmount(Math.min(250, newAmount + 10))} label="Increase amount"><Icon name="plus" /></Tap></div><div className="editor-label">Feeding days</div><div className="schedule-days modal-days">{dayOptions.map((day) => <Tap key={day} className={`schedule-day ${newDays.includes(day) ? "selected" : ""}`} onTap={() => setNewDays(newDays.includes(day) ? newDays.filter((item) => item !== day) : [...newDays, day])} label={`${newDays.includes(day) ? "Remove" : "Add"} ${day}`}><span>{day.slice(0, 1)}</span><small>{day}</small></Tap>)}</div><div className="modal-actions"><Tap className="secondary-button" onTap={() => setAddModalOpen(false)}>Cancel</Tap><Tap className="save-button" onTap={confirmAddSchedule}><Icon name="check" />Save</Tap></div></div></div>}</>;
 }
 
 function Monitor() {
@@ -269,19 +307,21 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("splash");
   useEffect(() => {
     if (screen !== "splash") return;
-    const timer = window.setTimeout(() => setScreen("login"), 1500);
+    const timer = window.setTimeout(() => {
+      void restoreThingsBoardSession().then((connected) => setScreen(connected ? "dashboard" : "login"));
+    }, 1500);
     return () => window.clearTimeout(timer);
   }, [screen]);
   let content: ReactNode;
   if (screen === "splash") return <div className="app-shell"><Splash /></div>;
-  if (screen === "login") return <div className="app-shell"><Login onLogin={() => setScreen("dashboard")} onSignup={() => setScreen("signup")} /></div>;
+  if (screen === "login") return <div className="app-shell"><ThingsBoardLogin onLogin={() => setScreen("dashboard")} /></div>;
   if (screen === "signup") return <div className="app-shell"><Signup onBack={() => setScreen("login")} onCreate={() => setScreen("dashboard")} /></div>;
   if (screen === "dashboard") content = <Dashboard setScreen={setScreen} />;
   else if (screen === "schedule") content = <Schedule />;
   else if (screen === "monitor") content = <Monitor />;
   else if (screen === "history") content = <History />;
   else if (screen === "notifications") content = <Notifications />;
-  else content = <Profile onLogout={() => setScreen("login")} />;
+  else content = <Profile onLogout={() => { void disconnectThingsBoard().finally(() => setScreen("login")); }} />;
   return <div className="app-shell"><ScreenShell screen={screen} setScreen={setScreen}>{content}</ScreenShell></div>;
 }
 
