@@ -1,4 +1,4 @@
-import { handler as pawsyncHandler } from "../server/pawsync-service";
+import { handler as pawsyncHandler } from "../server/pawsync-service.js";
 
 // Use Vercel's standard Web Handler API for this Vite project's function.
 export default {
