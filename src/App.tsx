@@ -121,13 +121,15 @@ function ScreenShell({ children, screen, setScreen, noNav = false }: { children:
 function ThingsBoardLogin({ onLogin }: { onLogin: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [deviceName, setDeviceName] = useState(localStorage.getItem("pawsync-device-name") || "PawSync Feeder");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const deviceName = localStorage.getItem("pawsync-device-name") || "PawSync Feeder";
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await connectThingsBoard(username, password, deviceName);
       localStorage.setItem("pawsync-device-name", deviceName.trim());
@@ -137,9 +139,8 @@ function ThingsBoardLogin({ onLogin }: { onLogin: () => void }) {
       setError(cause instanceof Error ? cause.message : "Could not connect to ThingsBoard.");
     } finally { setBusy(false); }
   };
-  return <ScreenShell screen="login" setScreen={() => {}} noNav><div className="login-screen"><BrandMark /><div className="login-copy"><div className="login-title">Welcome Back</div><div className="subtitle">Sign in to connect your PawSync feeder.</div></div><form className="login-card glass" onSubmit={(event) => void submit(event)}><label className="field"><Icon name="mail" /><div className="field-copy"><span>ThingsBoard email</span><input type="email" autoComplete="username" required value={username} onChange={(event) => setUsername(event.target.value)} /></div></label><label className="field"><Icon name="lock" /><div className="field-copy"><span>ThingsBoard password</span><input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></div></label><label className="field"><Icon name="bowl" /><div className="field-copy"><span>Device name</span><input required value={deviceName} onChange={(event) => setDeviceName(event.target.value)} /></div></label><div className="muted">Connects securely to ThingsBoard Cloud. Your password is sent through the PawSync server and is not saved.</div>{error && <div className="muted" role="alert">{error}</div>}<button className="primary-button" type="submit" disabled={busy}>{busy ? "Connecting…" : "Sign In"}</button></form><div className="login-footer">Secure connection · ThingsBoard Cloud</div></div></ScreenShell>;
+  return <ScreenShell screen="login" setScreen={() => {}} noNav><div className="login-screen"><BrandMark /><div className="login-copy"><div className="login-title">Welcome Back</div><div className="subtitle">Sign in to care for Milo from anywhere.</div></div><form className="login-card glass" onSubmit={(event) => void submit(event)}><label className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><input type="email" autoComplete="username" required value={username} onChange={(event) => setUsername(event.target.value)} /></div></label><label className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></div></label><a className="forgot-link" href="https://thingsboard.cloud/login" target="_blank" rel="noreferrer">Forgot Password?</a>{error && <div className="muted" role="alert">{error}</div>}{notice && <div className="muted" role="status">{notice}</div>}<button className="primary-button login-submit" type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign In"}</button><div className="signup-copy">New to PawSync? <button className="inline-link" type="button" onClick={() => { setNotice("PawSync uses ThingsBoard accounts. Ask your ThingsBoard administrator to create a Customer User account."); setError(""); }}>Create Account</button></div></form><div className="login-footer">Secure connection · ThingsBoard Cloud</div></div></ScreenShell>;
 }
-
 function Signup({ onBack, onCreate }: { onBack: () => void; onCreate: () => void }) {
   return <ScreenShell screen="signup" setScreen={() => {}} noNav><div className="login-screen signup-screen"><BrandMark /><div className="login-copy"><div className="login-title">Create Account</div><div className="subtitle">Start caring for your pet in sync.</div></div><div className="login-card glass"><div className="field"><Icon name="user" /><div className="field-copy"><span>Full name</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Full name">Alex Morgan</div></div></div><div className="field"><Icon name="mail" /><div className="field-copy"><span>Email</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Email address">alex@pawsync.com</div></div></div><div className="field"><Icon name="lock" /><div className="field-copy"><span>Password</span><div contentEditable suppressContentEditableWarning role="textbox" aria-label="Password">••••••••••</div></div></div><Tap className="primary-button" onTap={onCreate}>Create Account</Tap><div className="signup-copy">Already have an account? <Tap className="inline-link" onTap={onBack}>Sign In</Tap></div></div><div className="login-footer">Private, secure, and made for better care.</div></div></ScreenShell>;
 }
