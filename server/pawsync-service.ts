@@ -56,9 +56,14 @@ async function login(body: any) {
   });
   const auth: any = await authResponse.json().catch(() => ({}));
   if (!authResponse.ok || !auth.token) return json(401, { message: "ThingsBoard sign in failed. Check the account." });
-  const lookup = await fetch(`${THINGSBOARD}/api/tenant/devices?deviceName=${encodeURIComponent(deviceName)}`, { headers: { "X-Authorization": `Bearer ${auth.token}` } });
-  const device: any = await lookup.json().catch(() => ({}));
-  if (!lookup.ok || !device.id?.id) return json(404, { message: "Device not found in this ThingsBoard account." });
+  // Query only devices visible to the signed-in user so customer users can log
+  // in without receiving tenant-administrator access.
+  const lookup = await fetch(`${THINGSBOARD}/api/user/devices?pageSize=100&page=0&textSearch=${encodeURIComponent(deviceName)}`, { headers: { "X-Authorization": `Bearer ${auth.token}` } });
+  const devicePage: any = await lookup.json().catch(() => ({}));
+  const device = Array.isArray(devicePage?.data)
+    ? devicePage.data.find((entry: any) => entry.name === deviceName)
+    : Array.isArray(devicePage) ? devicePage.find((entry: any) => entry.name === deviceName) : null;
+  if (!lookup.ok || !device?.id?.id) return json(404, { message: "Device not found in the signed-in user's ThingsBoard access. Assign it to that user's Customer and check the device name." });
   const session: Session = { token: auth.token, deviceId: device.id.id, deviceName, expiresAt: Date.now() + 8 * 60 * 60 * 1000 };
   return json(200, { ok: true, deviceName }, { "Set-Cookie": setCookie(session) });
 }
