@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import pawSyncLogo from "../resources/pawsync_white.png";
+import MockChat from "./MockChat";
 import { connectThingsBoard, deviceApi, disconnectThingsBoard, restoreThingsBoardSession, type DeviceSchedule, type DeviceStatus } from "./deviceApi";
 
 type Screen =
@@ -115,7 +116,7 @@ function BottomNav({ active, setScreen }: { active: Screen; setScreen: (screen: 
 }
 
 function ScreenShell({ children, screen, setScreen, noNav = false }: { children: ReactNode; screen: Screen; setScreen: (screen: Screen) => void; noNav?: boolean }) {
-  return <div className="phone"><div className="ambient ambient-one" /><div className="ambient ambient-two" /><StatusBar /><main className={`screen-content ${noNav ? "no-nav" : ""}`}>{children}</main>{!noNav && <><BottomNav active={screen} setScreen={setScreen} /><div className="home-indicator" aria-hidden="true" /></>}</div>;
+  return <div className="phone"><div className="ambient ambient-one" /><div className="ambient ambient-two" /><StatusBar /><main className={`screen-content ${noNav ? "no-nav" : "with-chat"}`}>{children}</main>{!noNav && <><BottomNav active={screen} setScreen={setScreen} /><div className="home-indicator" aria-hidden="true" /></>}{screen !== "splash" && <MockChat aboveNavigation={!noNav} />}</div>;
 }
 
 function ThingsBoardLogin({ onLogin }: { onLogin: () => void }) {

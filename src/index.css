@@ -88,6 +88,26 @@ body {
 .screen-content { position: relative; z-index: 2; flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; padding: 0 18px calc(124px + env(safe-area-inset-bottom, 0px)); }
 .screen-content::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .screen-content.no-nav { padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+.screen-content.with-chat { padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
+.mock-chat {
+  --chat-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  pointer-events: none;
+}
+.mock-chat-above-nav { --chat-bottom: calc(105px + env(safe-area-inset-bottom, 0px)); }
+.mock-chat-launcher, .mock-chat-panel {
+  position: absolute;
+  right: 16px;
+  pointer-events: auto;
+}
+.mock-chat-launcher { bottom: var(--chat-bottom); }
+.mock-chat-panel {
+  bottom: calc(var(--chat-bottom) + 58px);
+  width: min(370px, calc(100% - 32px));
+  height: min(420px, calc(100% - var(--chat-bottom) - 124px - env(safe-area-inset-top, 0px)));
+}
 .glass { background: var(--glass); border: 1px solid var(--line); box-shadow: var(--soft-shadow); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); }
 .tap { cursor: pointer; user-select: none; transition: transform .22s ease, background .22s ease, box-shadow .22s ease, opacity .22s ease; outline: none; }
 .tap:active { transform: scale(.97); }
